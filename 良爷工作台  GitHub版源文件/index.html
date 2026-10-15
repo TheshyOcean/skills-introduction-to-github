@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#101110">
+<meta name="color-scheme" content="dark light">
+<meta name="format-detection" content="telephone=no">
+<title>ENDFIELD TERMINAL · 良爷工作台</title>
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{
+  --bg:#101110; --bg2:#181a18; --tx:#f5f5f0; --tx2:#898d89; --tx3:#5a5d59;
+  --ac:#fff500; --bd:#343633; --bds:#4a4d49;
+  --mono:"SFMono-Regular","Cascadia Code",Consolas,"PingFang SC","Microsoft YaHei",monospace;
+  --chamfer:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:var(--bg);color:var(--tx);
+  font-family:"HarmonyOS Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;}
+body{
+  display:flex;align-items:center;justify-content:center;
+  padding:24px calc(20px + env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left));
+  background-image:linear-gradient(rgba(245,245,240,.028) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(245,245,240,.028) 1px,transparent 1px);
+  background-size:64px 64px;
+}
+.wrap{width:100%;max-width:420px;}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:22px;}
+.brand i{width:5px;height:22px;background:var(--ac);display:block;}
+.brand b{font-family:var(--mono);font-size:15px;letter-spacing:.24em;font-weight:900;}
+.brand span{font-size:12px;color:var(--tx3);letter-spacing:.18em;}
+.card{border:1px solid var(--bd);background:var(--bg2);padding:20px 18px;clip-path:var(--chamfer);}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--tx3);}
+h1{font-size:19px;font-weight:700;margin:8px 0 6px;letter-spacing:.01em;}
+p.sub{font-size:13px;line-height:1.7;color:var(--tx2);}
+.track{position:relative;height:3px;background:var(--bd);margin:16px 0 4px;overflow:hidden;}
+.track i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--ac);transition:width .45s cubic-bezier(.16,.82,.2,1);}
+.meta{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--tx3);text-transform:uppercase;}
+.choose{display:none;margin-top:18px;}
+.choose.on{display:block;}
+.choose button{
+  display:flex;align-items:center;gap:10px;width:100%;margin-bottom:10px;
+  padding:15px 16px;border:1px solid var(--bds);background:transparent;color:var(--tx);
+  font-size:15px;font-family:inherit;text-align:left;cursor:pointer;
+  clip-path:var(--chamfer);transition:background .16s,border-color .16s;
+}
+.choose button b{font-weight:600;}
+.choose button em{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--tx3);font-style:normal;margin-left:auto;text-transform:uppercase;}
+.choose button:hover{border-color:var(--ac);background:rgba(255,245,0,.07);}
+.choose button:hover em{color:var(--ac);}
+.choose button::before{content:"";width:4px;height:18px;background:var(--ac);flex:none;}
+.hint{margin-top:10px;font-size:11.5px;line-height:1.7;color:var(--tx3);}
+.hint code{font-family:var(--mono);color:var(--tx2);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><i></i><b>ENDFIELD</b><span>良爷工作台</span></div>
+  <div class="card">
+    <div class="eyebrow" id="eyebrow">Detecting device</div>
+    <h1 id="title">正在识别设备…</h1>
+    <p class="sub" id="sub">即将进入最适合当前设备的界面</p>
+    <div class="track"><i id="fill"></i></div>
+    <div class="meta"><span id="mLeft">SYS.BOOT</span><span id="mRight">DEVICE SCAN</span></div>
+    <div class="choose" id="choose">
+      <button data-go="desktop"><b>电脑版</b><em>Desktop</em></button>
+      <button data-go="mobile"><b>手机版</b><em>Mobile</em></button>
+      <p class="hint">已记住你的选择，下次直接进入。<br>也可用 <code>?mode=desktop</code> / <code>?mode=mobile</code> 强制指定。</p>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  'use strict';
+  /* ↓↓↓ 如果两套界面改了文件名，只改这两行 ↓↓↓ */
+  var V={ desktop:'desktop.html', mobile:'mobile.html' };
+  /* ↑↑↑ 用单文件版就改成 'index1.html' / 'index2.html' ↑↑↑ */
+
+  var KEY='liangye_mode';
+  var ua=navigator.userAgent||'';
+  var coarse=false, fine=false;
+  try{ coarse=window.matchMedia('(pointer:coarse)').matches; }catch(e){}
+  try{ fine=window.matchMedia('(pointer:fine)').matches; }catch(e){}
+
+  function param(n){ try{ return new URLSearchParams(location.search).get(n); }catch(e){ return null; } }
+  function ls(k,v){
+    try{
+      if(v===undefined) return localStorage.getItem(k);
+      if(v==='') localStorage.removeItem(k); else localStorage.setItem(k,v);
+    }catch(e){}
+    return null;
+  }
+
+  var forced=param('mode');
+  if(forced==='desktop'||forced==='mobile') ls(KEY,forced);
+  if(param('choose')!==null) ls(KEY,'');           /* ?choose 强制回到选择页 */
+
+  var isPhone  = /Android.*Mobile|iPhone|iPod|Windows Phone|HarmonyOS.*Mobile|Mobile Safari/i.test(ua);
+  var isTablet = /iPad|Tablet|PlayBook|Silk|Android(?!.*Mobile)|Macintosh(?=.*Mobile)/i.test(ua);
+
+  var saved=ls(KEY);
+  var mode=saved;
+  if(mode!=='desktop'&&mode!=='mobile'){
+    if(isTablet) mode=null;                        /* 平板两种都合适 → 让用户选 */
+    else if(isPhone) mode='mobile';
+    else if(coarse&&!fine) mode='mobile';          /* 触屏且无精确指针 → 手机 */
+    else mode='desktop';
+  }
+
+  var fill=document.getElementById('fill');
+  var title=document.getElementById('title');
+  var sub=document.getElementById('sub');
+  var eyebrow=document.getElementById('eyebrow');
+  var mRight=document.getElementById('mRight');
+
+  function go(m){
+    mRight.textContent=(m==='mobile'?'MOBILE SHELL':'DESKTOP SHELL');
+    if(fill) fill.style.width='100%';
+    setTimeout(function(){ location.replace(V[m]); },240);
+  }
+
+  if(mode){
+    title.textContent=(mode==='mobile'?'进入手机版':'进入电脑版');
+    sub.textContent=(mode==='mobile'?'全宽对话 · 底部输入 · 原生手势':'侧栏导航 · 完整工作台布局');
+    eyebrow.textContent='Loading interface';
+    try{
+      var l=document.createElement('link'); l.rel='prefetch'; l.href=V[mode];
+      document.head.appendChild(l);
+    }catch(e){}
+    if(fill) fill.style.width='62%';
+    go(mode);
+  }else{
+    eyebrow.textContent='Select interface';
+    title.textContent='请选择要进入的版本';
+    sub.textContent='当前设备是平板或触屏电脑，两种界面都适合';
+    if(fill) fill.style.width='100%';
+    var box=document.getElementById('choose');
+    box.classList.add('on');
+    Array.prototype.forEach.call(box.querySelectorAll('button'),function(b){
+      b.addEventListener('click',function(){ ls(KEY,b.dataset.go); go(b.dataset.go); });
+    });
+  }
+})();
+</script>
+</body>
+</html>
